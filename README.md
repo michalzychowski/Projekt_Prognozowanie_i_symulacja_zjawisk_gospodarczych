@@ -1,0 +1,1 @@
+# Projekt_Prognozowanie_i_symulacja_zjawisk_gospodarczych
