@@ -1,0 +1,37 @@
+---
+title: "Projekt - Prognozowanie i symulacja zjawisk gospodarczych"
+author: "Piotr Pasierb, Oskar Paśko, Michał Żychowski"
+date: "2024-05-04"
+output:
+  pdf_document: default
+  html_document: default
+---
+# Wczytanie danych
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+setwd("C:/Users/micha/Desktop/Projekt_Prognozowanie_i_symulacja_zjawisk_gospodarczych")
+data <- read.csv("Dane.csv", sep = ";")
+```
+# Zbiór 1
+```{r}
+zb1 <- data.frame(data$Data,data$Podaż.pieniądza.ogółem.M3..w.mln.zł.)
+colnames(zb1) <- c("Data", "Podaż pieniądza ogółemM3 w mln zł.")
+head(zb1, n=10)
+```
+# Zbiór 2
+```{r}
+zb2 <- data.frame(data$Data,data$Wskaźnik.ogólnego.klimatu.koniunktury.w.budownictwie)
+colnames(zb2) <- c("Data", "Wskażnik ogólnego klimatu koniunktury w budownictwie")
+head(zb2, n=10)
+```
+# Zbiór 3
+```{r}
+zb3 <- data.frame(data$Data,data$Mieszkania.oddane.do.użytkowania..w.tys)
+colnames(zb3) <- c("Data", "Mieszkania oddane do użytkowania w tys")
+head(zb3, n=10)
+```
+# Zbiór 4
+```{r}
+zb4 <- data.frame(data$Data,data$Dochody.budżetu.państwa.ogółem..w.mln.zł.)
+colnames(zb4) <- c("Data", "Dochody budżetu państwa ogółem w mln zł.")
+head(zb4, n=10)
+```
