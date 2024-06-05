@@ -1,0 +1,148 @@
+---
+title: "Projekt"
+author: "Piotr Pasierb, Michał Żychowski, Oskar Paśko"
+date: "2024-06-05"
+output: html_document
+---
+
+# Instalowanie i ładowanie potrzebnych paczek oraz bilbiotek.
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+packages <- c("quantmod", "tseries", "forecast", "vars", "ggplot2", "dplyr", "FinTS")
+install.packages(packages)
+library(quantmod)
+library(tseries)
+library(forecast)
+library(vars)
+library(ggplot2)
+library(dplyr)
+library(FinTS)
+```
+# Ładowanie potrzebnych danych
+## Ładowanie danych FRED: Consumer Price Index
+```{r}
+getSymbols("CPIAUCSL", src = "FRED")
+cpi <- CPIAUCSL
+```
+
+## Ładowanie danych M4
+
+```{r}
+m4_data <- read.csv("D:/Projekt_Prognozowanie_i_symulacja_zjawisk_gospodarczych/Projekt/data/Monthly-train.csv")
+m4_ts <- ts(m4_data[,2], start = c(1950), frequency = 1)
+```
+
+## Ładowanie danych Sunspots
+
+```{r}
+sunspots_data <- read.csv("D:/Projekt_Prognozowanie_i_symulacja_zjawisk_gospodarczych/Projekt/data/Sunspots.csv")
+sunspots_ts <- ts(sunspots_data$X, start = c(1749, 1), frequency = 12)
+```
+
+# ACF oraz PACF
+## CPI
+```{r}
+acf(cpi, main="ACF of CPI")
+pacf(cpi, main="PACF of CPI")
+```
+## M4
+```{r}
+acf(m4_ts, main="ACF of M4 Yearly Series")
+pacf(m4_ts, main="PACF of M4 Yearly Series")
+```
+## Sunspots
+```{r}
+acf(sunspots_ts, main="ACF of Sunspots")
+pacf(sunspots_ts, main="PACF of Sunspots")
+```
+
+# Testy
+## Autokorelacja
+
+```{r}
+Box.test(cpi, lag = 20, type = "Ljung-Box")
+Box.test(m4_ts, lag = 20, type = "Ljung-Box")
+Box.test(sunspots_ts, lag = 20, type = "Ljung-Box")
+```
+
+## heteroskedastyczność
+```{r}
+ArchTest(cpi)
+ArchTest(m4_ts)
+ArchTest(sunspots_ts)
+```
+
+## Stacjonarne
+```{r}
+adf.test(cpi)
+adf.test(m4_ts)
+adf.test(sunspots_ts)
+```
+
+# Transformacja szeregów do celów prognnostycznych
+## Różnicowanie w celu uczynienia szeregu stacjonarnym
+```{r}
+diff_cpi <- diff(cpi)
+diff_m4_ts <- diff(m4_ts)
+diff_sunspots_ts <- diff(sunspots_ts)
+```
+
+## Usuwanie wartości NA
+```{r}
+diff_cpi <- na.omit(diff_cpi)
+diff_m4_ts <- na.omit(diff_m4_ts)
+diff_sunspots_ts <- na.omit(diff_sunspots_ts)
+```
+
+## Sprawdzanie ponownie testy stacjonarnego
+```{r}
+adf.test(diff_cpi)
+adf.test(diff_m4_ts)
+adf.test(diff_sunspots_ts)
+```
+# Wykonanie prognoz modelami
+## Model ARIMA 
+```{r}
+fit_arima_cpi <- auto.arima(cpi)
+fit_arima_m4 <- auto.arima(m4_ts)
+fit_arima_sunspots <- auto.arima(sunspots_ts)
+
+forecast_cpi <- forecast(fit_arima_cpi, h=24)
+forecast_m4 <- forecast(fit_arima_m4, h=10)
+forecast_sunspots <- forecast(fit_arima_sunspots, h=24)
+```
+
+## Wykres prognozy
+```{r}
+plot(forecast_cpi)
+plot(forecast_m4)
+plot(forecast_sunspots)
+```
+
+## Model VAR
+```{r}
+aligned_data <- na.omit(cbind(diff_cpi, diff_m4_ts, diff_sunspots_ts))
+fit_var <- VAR(aligned_data, p=2)
+forecast_var <- predict(fit_var, n.ahead=10)
+```
+## Wykres modelu VAR
+```{r}
+plot(forecast_var)
+```
+
+# Dekompozycja szeregu czasowego
+Polecenie 'decomp_cpi <- decompose(cpi)' oraz 'decomp_m4 <- decompose(m4_ts)' wyrzucą błąd ponieważ, te szeregi czasowe nie posiadają okresów lub mają ich mniej niż 2.
+```{r}
+# decomp_cpi <- decompose(cpi)
+# decomp_m4 <- decompose(m4_ts)
+decomp_sunspots <- decompose(sunspots_ts)
+```
+
+## Wykres dekompozycji
+```{r}
+plot(decomp_sunspots)
+```
