@@ -3,35 +3,137 @@ title: "Projekt - Prognozowanie i symulacja zjawisk gospodarczych"
 author: "Piotr Pasierb, Oskar Paśko, Michał Żychowski"
 date: "2024-05-04"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
-# Wczytanie danych
+
+# Projekt - Prognozowanie i symulacja zjawisk gospodarczych
+## Wczytanie bibliotek
+Wczytuje potrzebne biblioteki do projektu.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(zoo)
+library(xts)
+library(tsbox)
+```
+
+## Wczytanie danych
+Wczytuje dane wykorzystywane do analizy w projekcie.
+
 ```{r echo=FALSE, message=TRUE, warning=FALSE}
 setwd("C:/Users/micha/Desktop/Projekt_Prognozowanie_i_symulacja_zjawisk_gospodarczych")
-data <- read.csv("Dane.csv", sep = ";")
+data <- read.csv("Data/Dane.csv", sep = ";", dec = ",", colClasses = c("character","numeric","numeric","numeric","numeric"))
+data2 <- read.csv("Data/Dane2.csv", sep = ",")
+data3 <- read.csv("Data/Dane3.csv", sep = ";")
+data4 <- read.csv("Data/Dane4.csv", sep = ",")
 ```
-# Zbiór 1
-```{r}
+
+Dalej dane są podzielone na 7 zbiorów. Pierwsze cztery zbiory to "Wskażniki makroekonomiczne" z strony Głównego Urzędu Statystycznego. Dane zbiorów 5-7 są z strony kaggle.com. Zbiór piąty to dzienne dane pogodowe Indii. Szósty zbiór to godzinowe dane pogodowe Półwyspu Gallipoli. Ostatni zbiór zawiera miesięczne dane pogodowe Stanów Zjednoczonych Ameryki.
+
+### Zbiór 1
+```{r echo=FALSE, message=TRUE, warning=FALSE}
 zb1 <- data.frame(data$Data,data$Podaż.pieniądza.ogółem.M3..w.mln.zł.)
-colnames(zb1) <- c("Data", "Podaż pieniądza ogółemM3 w mln zł.")
+colnames(zb1) <- c("Data", "Podaż pieniądza ogółem M3 w mln zł.")
 head(zb1, n=10)
 ```
-# Zbiór 2
-```{r}
+
+### Zbiór 2
+```{r echo=FALSE, message=TRUE, warning=FALSE}
 zb2 <- data.frame(data$Data,data$Wskaźnik.ogólnego.klimatu.koniunktury.w.budownictwie)
 colnames(zb2) <- c("Data", "Wskażnik ogólnego klimatu koniunktury w budownictwie")
 head(zb2, n=10)
 ```
-# Zbiór 3
-```{r}
+
+### Zbiór 3
+```{r echo=FALSE, message=TRUE, warning=FALSE}
 zb3 <- data.frame(data$Data,data$Mieszkania.oddane.do.użytkowania..w.tys)
 colnames(zb3) <- c("Data", "Mieszkania oddane do użytkowania w tys")
 head(zb3, n=10)
 ```
-# Zbiór 4
-```{r}
+
+### Zbiór 4
+```{r echo=FALSE, message=TRUE, warning=FALSE}
 zb4 <- data.frame(data$Data,data$Dochody.budżetu.państwa.ogółem..w.mln.zł.)
 colnames(zb4) <- c("Data", "Dochody budżetu państwa ogółem w mln zł.")
 head(zb4, n=10)
 ```
+
+### Zbiór 5
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+zb5 <- data.frame(data2$date,data2$meantemp)
+colnames(zb5) <- c("Data", "Średnia temperatura w ciągu dnia.")
+head(zb5, n=10)
+```
+
+### Zbiór 6
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+zb6 <- data.frame(data3$DateTime,data3$Temperature)
+colnames(zb6) <- c("Data i godzina", "Temperatura.")
+head(zb6, n=10)
+```
+
+
+### Zbiór 7
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+zb7 <- data.frame(data4$Time,data4$Monthly.Average.Temperature)
+zb7 <- na.omit(zb7)
+colnames(zb7) <- c("Data i godzina", "Średnia miesięczna temperatura.")
+head(zb7, n=10)
+```
+
+
+## Szeregi czasowe
+Utworzenie szeregów czasowych z wczytanych zbiorów danych.
+
+### Szereg pierwszy
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+ts1 <- ts(zb1$`Podaż pieniądza ogółem M3 w mln zł.`, start = c(2000, 1), frequency = 4)
+ts1
+```
+
+### Szereg drugi
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+ts2 <- ts(zb2$`Wskażnik ogólnego klimatu koniunktury w budownictwie`, start = c(2000, 1), frequency = 4)
+ts2
+```
+
+### Szereg trzeci
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+ts3 <- ts(zb3$`Mieszkania oddane do użytkowania w tys`, start = c(2000, 1), frequency = 4)
+ts3
+```
+
+### Szereg czwarty
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+ts4 <- ts(zb4$`Dochody budżetu państwa ogółem w mln zł.`, start = c(2000, 1), frequency = 4)
+ts4
+```
+
+### Szereg piąty
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+start_date <- as.Date("2017-01-01")
+end_date <- as.Date("2017-04-24")
+dates <- seq.Date(from = start_date, to = end_date, by = "day")
+ts5 <- ts_ts(xts(zb5$`Średnia temperatura w ciągu dnia.`, order.by = dates))
+ts5
+```
+
+### Szereg szósty
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+start_date2 <- as.POSIXct("2008-01-01 03:00:00")
+end_date2 <- as.POSIXct("2021-12-31 23:00:00")
+dates2 <- seq(from = start_date2, to = end_date2, by = "hour")
+ts6 <- ts_ts(xts(zb6$Temperatura., order.by = dates2))
+ts6
+```
+
+### Szereg siódmy
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+ts7 <- ts(zb7$`Średnia miesięczna temperatura.`, start = c(1942, 2), frequency = 12)
+ts7
+```
+
+
+
+
