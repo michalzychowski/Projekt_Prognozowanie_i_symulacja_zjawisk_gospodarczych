@@ -3,8 +3,8 @@ title: "Projekt - Prognozowanie i symulacja zjawisk gospodarczych"
 author: "Piotr Pasierb, Oskar Paśko, Michał Żychowski"
 date: "2024-05-04"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 # Projekt - Prognozowanie i symulacja zjawisk gospodarczych
@@ -16,12 +16,17 @@ library(dplyr)
 library(zoo)
 library(xts)
 library(tsbox)
+library(skedastic)
+library(lmtest)
+library(urca)
+library(forecast)
+library(ggplot2)
 ```
 
 ## Wczytanie danych
 Wczytuje dane wykorzystywane do analizy w projekcie.
 
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 setwd("C:/Users/micha/Desktop/Projekt_Prognozowanie_i_symulacja_zjawisk_gospodarczych")
 data <- read.csv("Data/Dane.csv", sep = ";", dec = ",", colClasses = c("character","numeric","numeric","numeric","numeric"))
 data2 <- read.csv("Data/Dane2.csv", sep = ",")
@@ -32,42 +37,42 @@ data4 <- read.csv("Data/Dane4.csv", sep = ",")
 Dalej dane są podzielone na 7 zbiorów. Pierwsze cztery zbiory to "Wskażniki makroekonomiczne" z strony Głównego Urzędu Statystycznego. Dane zbiorów 5-7 są z strony kaggle.com. Zbiór piąty to dzienne dane pogodowe Indii. Szósty zbiór to godzinowe dane pogodowe Półwyspu Gallipoli. Ostatni zbiór zawiera miesięczne dane pogodowe Stanów Zjednoczonych Ameryki.
 
 ### Zbiór 1
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb1 <- data.frame(data$Data,data$Podaż.pieniądza.ogółem.M3..w.mln.zł.)
 colnames(zb1) <- c("Data", "Podaż pieniądza ogółem M3 w mln zł.")
 head(zb1, n=10)
 ```
 
 ### Zbiór 2
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb2 <- data.frame(data$Data,data$Wskaźnik.ogólnego.klimatu.koniunktury.w.budownictwie)
 colnames(zb2) <- c("Data", "Wskażnik ogólnego klimatu koniunktury w budownictwie")
 head(zb2, n=10)
 ```
 
 ### Zbiór 3
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb3 <- data.frame(data$Data,data$Mieszkania.oddane.do.użytkowania..w.tys)
 colnames(zb3) <- c("Data", "Mieszkania oddane do użytkowania w tys")
 head(zb3, n=10)
 ```
 
 ### Zbiór 4
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb4 <- data.frame(data$Data,data$Dochody.budżetu.państwa.ogółem..w.mln.zł.)
 colnames(zb4) <- c("Data", "Dochody budżetu państwa ogółem w mln zł.")
 head(zb4, n=10)
 ```
 
 ### Zbiór 5
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb5 <- data.frame(data2$date,data2$meantemp)
 colnames(zb5) <- c("Data", "Średnia temperatura w ciągu dnia.")
 head(zb5, n=10)
 ```
 
 ### Zbiór 6
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb6 <- data.frame(data3$DateTime,data3$Temperature)
 colnames(zb6) <- c("Data i godzina", "Temperatura.")
 head(zb6, n=10)
@@ -75,7 +80,7 @@ head(zb6, n=10)
 
 
 ### Zbiór 7
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb7 <- data.frame(data4$Time,data4$Monthly.Average.Temperature)
 zb7 <- na.omit(zb7)
 colnames(zb7) <- c("Data i godzina", "Średnia miesięczna temperatura.")
@@ -87,52 +92,574 @@ head(zb7, n=10)
 Utworzenie szeregów czasowych z wczytanych zbiorów danych.
 
 ### Szereg pierwszy
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts1 <- ts(zb1$`Podaż pieniądza ogółem M3 w mln zł.`, start = c(2000, 1), frequency = 4)
 ts1
+plot(ts1)
 ```
 
 ### Szereg drugi
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts2 <- ts(zb2$`Wskażnik ogólnego klimatu koniunktury w budownictwie`, start = c(2000, 1), frequency = 4)
 ts2
+plot(ts2)
 ```
 
 ### Szereg trzeci
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts3 <- ts(zb3$`Mieszkania oddane do użytkowania w tys`, start = c(2000, 1), frequency = 4)
 ts3
+plot(ts3)
 ```
 
 ### Szereg czwarty
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts4 <- ts(zb4$`Dochody budżetu państwa ogółem w mln zł.`, start = c(2000, 1), frequency = 4)
 ts4
+plot(ts4)
 ```
 
 ### Szereg piąty
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 start_date <- as.Date("2017-01-01")
 end_date <- as.Date("2017-04-24")
 dates <- seq.Date(from = start_date, to = end_date, by = "day")
 ts5 <- ts_ts(xts(zb5$`Średnia temperatura w ciągu dnia.`, order.by = dates))
 ts5
+plot(ts5)
 ```
 
 ### Szereg szósty
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 start_date2 <- as.POSIXct("2008-01-01 03:00:00")
 end_date2 <- as.POSIXct("2021-12-31 23:00:00")
 dates2 <- seq(from = start_date2, to = end_date2, by = "hour")
 ts6 <- ts_ts(xts(zb6$Temperatura., order.by = dates2))
 ts6
+plot(ts6, col="blue")
 ```
 
 ### Szereg siódmy
-```{r echo=FALSE, message=TRUE, warning=FALSE}
+```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts7 <- ts(zb7$`Średnia miesięczna temperatura.`, start = c(1942, 2), frequency = 12)
 ts7
+plot(ts7, col="blue")
 ```
+
+## Autokorelacja
+Teraz przeprowadzamy testy na autokorelację ACF i PACF oraz Durbina-Watsona dla każdego szeregu czasowego.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts1)
+pacf(ts1)
+df1 = data.frame(time=1:length(ts1),ts1)
+model1 <- lm(ts1~time,data = df1)
+dwtest(formula = model1, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts2)
+pacf(ts2)
+df2 = data.frame(time=1:length(ts2),ts2)
+model2 <- lm(ts2~time,data = df2)
+dwtest(formula = model2, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts3)
+pacf(ts3)
+df3 = data.frame(time=1:length(ts3),ts3)
+model3 <- lm(ts3~time,data = df3)
+dwtest(formula = model3, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts4)
+pacf(ts4)
+df4 = data.frame(time=1:length(ts4),ts4)
+model4 <- lm(ts4~time,data = df4)
+dwtest(formula = model4, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts5)
+pacf(ts5)
+df5 = data.frame(time=1:length(ts5),ts5)
+model5 <- lm(ts5~time,data = df5)
+dwtest(formula = model5, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts6)
+pacf(ts6)
+df6 = data.frame(time=1:length(ts6),ts6)
+model6 <- lm(ts6~time,data = df6)
+dwtest(formula = model6, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts7)
+pacf(ts7)
+df7 = data.frame(time=1:length(ts7),ts7)
+model7 <- lm(ts7~time,data = df7)
+dwtest(formula = model7, order.by = NULL)
+```
+
+Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
+
+## Heteroskedastyczność
+Teraz przeprowadzamy testy na heteroskedastyczność dla wszystkich siedmiu szeregów czasowych.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model1$residuals)
+bptest(model1)
+```
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność. 
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model2$residuals)
+bptest(model2)
+```
+
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność. 
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model3$residuals)
+bptest(model3)
+```
+
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest większe od 0.05 nie możemy odrzucić hipotezy zerowej i nie możemy stwierdzić, że występuje heteroskedastyczność. Musimy przeprowadzić kolejne testy.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+white(mainlm = model3, interactions = FALSE, statonly = FALSE)
+goldfeld_quandt(mainlm = model3, method = "parametric", deflator = NA, prop_central = 1/3, group1prop = 1/2, alternative = "two.sided", statonly = FALSE)
+```
+Po przeprowadzeniu testu White'a i testu Goldfeld-Quandt'a dalej p-value jest większe od 0.05, więc możemy stwierdzić, że nie występuje heteroskedastyczność.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model4$residuals)
+bptest(model4)
+```
+
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model5$residuals)
+bptest(model5)
+```
+
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest większe od 0.05 nie możemy odrzucić hipotezy zerowej i nie możemy stwierdzić, że występuje heteroskedastyczność. Musimy przeprowadzić kolejne testy.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+white(mainlm = model5, interactions = FALSE, statonly = FALSE)
+goldfeld_quandt(mainlm = model5, method = "parametric", deflator = NA, prop_central = 1/3, group1prop = 1/2, alternative = "two.sided", statonly = FALSE)
+```
+
+Po przeprowadzeniu testu White'a i testu Goldfeld-Quandt'a dalej p-value jest większe od 0.05, więc możemy stwierdzić, że nie występuje heteroskedastyczność.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model6$residuals, type = "l", col="blue")
+bptest(model6)
+```
+
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+plot(model7$residuals, type = "l", col="blue")
+bptest(model7)
+```
+
+Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność.
+
+
+## Stacjonarność
+Teraz przeprowadzamy test na stacjonarność naszych szeregów.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+urca::ur.kpss(ts1) %>% summary()
+urca::ur.kpss(ts2) %>% summary()
+urca::ur.kpss(ts3) %>% summary()
+urca::ur.kpss(ts4) %>% summary()
+urca::ur.kpss(ts5) %>% summary()
+urca::ur.kpss(ts6) %>% summary()
+urca::ur.kpss(ts7) %>% summary()
+```
+
+Z przeprowadzonego testu KPSS wychodzi, iż pierwsze sześć szeregów czasowych jest niestacjonarne, a ostatni siódmy szereg jest stacjonarny.
+
+
+
+## Tworzenie modeli
+Na podstawie naszych wcześniejszych testów stworzymy teraz model predykcji dla każdego szeregu czasowego.
+
+### Szereg 1
+Jako, że pierwszy szereg czasowy wyszedł niestacjonarny musimy go zróżnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+diff(ts1, lag = 4) %>% urca::ur.kpss() %>% summary()
+```
+Jako, że zróżnicowanie szeregu nie przyniosło oczekiwanych rezultatów (szereg dalej jest niestacjonarny). Spróbujemy pozbyć się trendu.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+model1$residuals %>% urca::ur.kpss() %>% summary()
+```
+
+Pozbycie się trendu nie spowodowało, że nasz szereg jest stacjonarny. Musimy, więc 
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+###
+```
+
+### Szereg 2
+Jako, że drugi szereg czasowy też wyszedł niestacjonarny musimy go zróżnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+diff(ts2) %>% urca::ur.kpss() %>% summary()
+```
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(diff(ts2))
+pacf(diff(ts2))
+```
+
+Z testu ACF wychodzi nam, iż q może wychodzić 1. Z testu PACF wychodzi, iż p jest też równe 1.
+Szereg czasowy wydaje się być sezonowy.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts2, order = c(1,1,1), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts2, seasonal = c(1,1,1), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+ts2arima = Arima(y=ts2, seasonal = c(1,1,1), lambda = "auto")
+ts2arima
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+auto.arima(ts2, seasonal = TRUE)
+```
+
+Model ts2arima okazał się najlepszy spośród testowany modeli.
+
+
+### Szereg 3
+Jako, że trzeci szereg czasowy również wyszedł niestacjonarny musimy go zróżnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+diff(ts3) %>% urca::ur.kpss() %>% summary()
+```
+
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(diff(ts3, lag = 4))
+pacf(diff(ts3, lag = 4))
+```
+
+Z testu ACF wychodzi nam, iż q może wychodzić 1. Z testu PACF wychodzi, iż p jest też równe 1.
+Szereg czasowy wydaje się być sezonowy.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts3, order = c(1,1,1), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts3, seasonal = c(1,1,1), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+ts3arima = Arima(y=ts3, seasonal = c(1,1,1), lambda = "auto")
+ts3arima
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+auto.arima(ts3, seasonal = TRUE)
+```
+
+Model ts3arima okazał się najlepszy spośród testowany modeli.
+
+### Szereg 4
+Jako, że czwarty szereg czasowy wyszedł niestacjonarny musimy go zróżnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+diff(ts4) %>% urca::ur.kpss() %>% summary()
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(diff(ts4, lag = 4))
+pacf(diff(ts4))
+```
+
+Z testu ACF wychodzi nam, iż q może wychodzić 2. Z testu PACF wychodzi, iż p jest równe 1.
+Szereg czasowy wydaje się być sezonowy.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts4, order = c(1,1,2), lambda = NULL)
+```
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts4, order = c(8,2,8), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+ts4arima = Arima(y=ts4, seasonal = c(4,2,4), lambda = NULL)
+ts4arima
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts4, seasonal = c(4,0,4), lambda = "auto")
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+auto.arima(ts4, seasonal = TRUE)
+```
+
+Model ts4arima okazał się najlepszy spośród testowany modeli.
+
+### Szereg 5
+Jako, że piąty szereg czasowy też wyszedł niestacjonarny musimy go zróżnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+diff(ts5) %>% urca::ur.kpss() %>% summary()
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(diff(ts5))
+pacf(diff(ts5))
+```
+
+Z testu ACF wychodzi nam, iż q może wychodzić 0. Z testu PACF wychodzi, iż p jest też równe 0.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+ts5arima = Arima(y=ts5, order = c(0,1,0), lambda = NULL)
+ts5arima
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts5, seasonal = c(0,0,0), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts5, order = c(1,1,0), lambda = "auto")
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+auto.arima(ts5, seasonal = TRUE)
+```
+
+Model ts5arima okazał się najlepszy spośród testowany modeli.
+
+### Szereg 6
+Jako, że szósty szereg czasowy wyszedł niestacjonarny musimy go zróżnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+diff(ts6) %>% urca::ur.kpss() %>% summary()
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(diff(ts6, lag = 24))
+pacf(diff(ts6))
+```
+
+Z testu ACF wychodzi nam, iż q może wychodzić 0. Z testu PACF wychodzi, iż p jest też równe 0.
+Szereg czasowy wydaje się być sezonowy.
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+ts6arima = Arima(y=ts6, order = c(0,1,0), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts6, seasonal = c(0,0,0), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+#Arima(y=ts6, seasonal = c(1,0,1), lambda = "auto")
+# Za duża ilość dancyh do obliczenia dla komputera
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+#auto.arima(ts6, seasonal = TRUE)
+# Za duża ilość dancyh do obliczenia dla komputera
+```
+
+Model ts6arima okazał się najlepszy spośród testowany modeli.
+
+### Szereg 7
+Jako, że siódmy jest stacjonarny nie musimy go różnicować.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+acf(ts7)
+pacf(ts7)
+```
+
+Z testu ACF wychodzi nam, iż q może wychodzić 1. Z testu PACF wychodzi, iż p jest też równe 1.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts7, seasonal = c(1,0,1), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts7, order = c(1,0,1), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+Arima(y=ts7, order = c(1,0,4), lambda = NULL)
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+ts7arima = Arima(y=ts7, order = c(1,0,8), lambda = NULL)
+ts7arima
+```
+
+Model ts7arima okazał się najlepszy spośród testowany modeli.
+
+
+## Predykcja
+Przeprowadzamy predykcję dla wybranych modeli.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction1 
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction2 = forecast(ts2arima, h = 12)
+autoplot(ts2, series="Original Data") +
+  autolayer(prediction2, series="Forecast", PI=FALSE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction3 = forecast(ts3arima, h = 12)
+autoplot(ts3, series="Original Data") +
+  autolayer(prediction3, series="Forecast", PI=FALSE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction4 = forecast(ts4arima, h = 12)
+autoplot(ts4, series="Original Data") +
+  autolayer(prediction3, series="Forecast", PI=FALSE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
+```
+
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction5 = forecast(ts5arima, h = 12)
+autoplot(ts5, series="Original Data") +
+  autolayer(prediction5, series="Forecast", PI=FALSE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction6 = forecast(ts6arima, h = 12)
+autoplot(ts6, series="Original Data") +
+  autolayer(prediction6, series="Forecast", PI=FALSE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
+```
+
+```{r echo=TRUE, message=TRUE, warning=FALSE}
+prediction7 = forecast(ts4arima, h = 12)
+autoplot(ts7, series="Original Data") +
+  autolayer(prediction7, series="Forecast", PI=FALSE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
+```
+
+
+
+## Dekompozycja
+
+```{r}
+decompose(ts2) %>% plot()
+```
+
+
+```{r}
+decompose(ts3) %>% plot()
+```
+
+```{r}
+decompose(ts4) %>% plot()
+```
+
+```{r}
+decompose(ts5) %>% plot()
+```
+
+```{r}
+decompose(ts6) %>% plot()
+```
+
+```{r}
+decompose(ts7) %>% plot()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
