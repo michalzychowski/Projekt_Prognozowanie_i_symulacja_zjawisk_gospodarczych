@@ -1,10 +1,10 @@
 ---
 title: "Projekt - Prognozowanie i symulacja zjawisk gospodarczych"
 author: "Piotr Pasierb, Oskar Paśko, Michał Żychowski"
-date: "2024-05-04"
+date: "2024-06-21"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 # Projekt - Prognozowanie i symulacja zjawisk gospodarczych
@@ -31,10 +31,9 @@ setwd("C:/Users/micha/Desktop/Projekt_Prognozowanie_i_symulacja_zjawisk_gospodar
 data <- read.csv("Data/Dane.csv", sep = ";", dec = ",", colClasses = c("character","numeric","numeric","numeric","numeric"))
 data2 <- read.csv("Data/Dane2.csv", sep = ",")
 data3 <- read.csv("Data/Dane3.csv", sep = ";")
-data4 <- read.csv("Data/Dane4.csv", sep = ",")
 ```
 
-Dalej dane są podzielone na 7 zbiorów. Pierwsze cztery zbiory to "Wskażniki makroekonomiczne" z strony Głównego Urzędu Statystycznego. Dane zbiorów 5-7 są z strony kaggle.com. Zbiór piąty to dzienne dane pogodowe Indii. Szósty zbiór to godzinowe dane pogodowe Półwyspu Gallipoli. Ostatni zbiór zawiera miesięczne dane pogodowe Stanów Zjednoczonych Ameryki.
+Dalej dane są podzielone na 6 zbiorów. Pierwsze cztery zbiory to "Wskażniki makroekonomiczne" z strony Głównego Urzędu Statystycznego. Dane zbiorów 5 i 6 są z strony kaggle.com. Zbiór piąty to dzienne dane pogodowe Indii. Szósty zbiór to godzinowe dane pogodowe Półwyspu Gallipoli.
 
 ### Zbiór 1
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -57,6 +56,7 @@ colnames(zb3) <- c("Data", "Mieszkania oddane do użytkowania w tys")
 head(zb3, n=10)
 ```
 
+
 ### Zbiór 4
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb4 <- data.frame(data$Data,data$Dochody.budżetu.państwa.ogółem..w.mln.zł.)
@@ -67,6 +67,7 @@ head(zb4, n=10)
 ### Zbiór 5
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 zb5 <- data.frame(data2$date,data2$meantemp)
+zb5$data2.meantemp <- round(zb5$data2.meantemp, digits = 2)
 colnames(zb5) <- c("Data", "Średnia temperatura w ciągu dnia.")
 head(zb5, n=10)
 ```
@@ -79,13 +80,6 @@ head(zb6, n=10)
 ```
 
 
-### Zbiór 7
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-zb7 <- data.frame(data4$Time,data4$Monthly.Average.Temperature)
-zb7 <- na.omit(zb7)
-colnames(zb7) <- c("Data i godzina", "Średnia miesięczna temperatura.")
-head(zb7, n=10)
-```
 
 
 ## Szeregi czasowe
@@ -94,28 +88,24 @@ Utworzenie szeregów czasowych z wczytanych zbiorów danych.
 ### Szereg pierwszy
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts1 <- ts(zb1$`Podaż pieniądza ogółem M3 w mln zł.`, start = c(2000, 1), frequency = 4)
-ts1
 plot(ts1)
 ```
 
 ### Szereg drugi
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts2 <- ts(zb2$`Wskażnik ogólnego klimatu koniunktury w budownictwie`, start = c(2000, 1), frequency = 4)
-ts2
 plot(ts2)
 ```
 
 ### Szereg trzeci
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts3 <- ts(zb3$`Mieszkania oddane do użytkowania w tys`, start = c(2000, 1), frequency = 4)
-ts3
 plot(ts3)
 ```
 
 ### Szereg czwarty
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 ts4 <- ts(zb4$`Dochody budżetu państwa ogółem w mln zł.`, start = c(2000, 1), frequency = 4)
-ts4
 plot(ts4)
 ```
 
@@ -125,26 +115,19 @@ start_date <- as.Date("2017-01-01")
 end_date <- as.Date("2017-04-24")
 dates <- seq.Date(from = start_date, to = end_date, by = "day")
 ts5 <- ts_ts(xts(zb5$`Średnia temperatura w ciągu dnia.`, order.by = dates))
-ts5
 plot(ts5)
 ```
 
 ### Szereg szósty
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 start_date2 <- as.POSIXct("2008-01-01 03:00:00")
-end_date2 <- as.POSIXct("2021-12-31 23:00:00")
+end_date2 <- as.POSIXct("2008-12-31 23:00:00")
 dates2 <- seq(from = start_date2, to = end_date2, by = "hour")
 ts6 <- ts_ts(xts(zb6$Temperatura., order.by = dates2))
-ts6
 plot(ts6, col="blue")
 ```
 
-### Szereg siódmy
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-ts7 <- ts(zb7$`Średnia miesięczna temperatura.`, start = c(1942, 2), frequency = 12)
-ts7
-plot(ts7, col="blue")
-```
+
 
 ## Autokorelacja
 Teraz przeprowadzamy testy na autokorelację ACF i PACF oraz Durbina-Watsona dla każdego szeregu czasowego.
@@ -210,15 +193,6 @@ dwtest(formula = model6, order.by = NULL)
 
 Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
 
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-acf(ts7)
-pacf(ts7)
-df7 = data.frame(time=1:length(ts7),ts7)
-model7 <- lm(ts7~time,data = df7)
-dwtest(formula = model7, order.by = NULL)
-```
-
-Z przeprowadzonego testu wynika, iż zachodzi autokorelacja.
 
 ## Heteroskedastyczność
 Teraz przeprowadzamy testy na heteroskedastyczność dla wszystkich siedmiu szeregów czasowych.
@@ -278,13 +252,6 @@ bptest(model6)
 Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność.
 
 
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-plot(model7$residuals, type = "l", col="blue")
-bptest(model7)
-```
-
-Po przeprowadzeniu testu Breusch-Pagan'a, ponieważ p-value jest mniejsze od 0.05 odrzucamy hipotezę zerową i możemy stwierdzić, że występuje heteroskedastyczność.
-
 
 ## Stacjonarność
 Teraz przeprowadzamy test na stacjonarność naszych szeregów.
@@ -296,7 +263,6 @@ urca::ur.kpss(ts3) %>% summary()
 urca::ur.kpss(ts4) %>% summary()
 urca::ur.kpss(ts5) %>% summary()
 urca::ur.kpss(ts6) %>% summary()
-urca::ur.kpss(ts7) %>% summary()
 ```
 
 Z przeprowadzonego testu KPSS wychodzi, iż pierwsze sześć szeregów czasowych jest niestacjonarne, a ostatni siódmy szereg jest stacjonarny.
@@ -306,7 +272,7 @@ Z przeprowadzonego testu KPSS wychodzi, iż pierwsze sześć szeregów czasowych
 ## Tworzenie modeli
 Na podstawie naszych wcześniejszych testów stworzymy teraz model predykcji dla każdego szeregu czasowego.
 
-### Szereg 1
+### Model 1
 Jako, że pierwszy szereg czasowy wyszedł niestacjonarny musimy go zróżnicować.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -319,13 +285,15 @@ Jako, że zróżnicowanie szeregu nie przyniosło oczekiwanych rezultatów (szer
 model1$residuals %>% urca::ur.kpss() %>% summary()
 ```
 
-Pozbycie się trendu nie spowodowało, że nasz szereg jest stacjonarny. Musimy, więc 
+Pozbycie się trendu nie spowodowało, że nasz szereg jest stacjonarny.
+Szereg nie jest możliwy do sprowadzenia do postaci stacjonarnej.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-###
+ts1arima = auto.arima(ts1, seasonal = TRUE)
+ts1arima
 ```
 
-### Szereg 2
+### Model 2
 Jako, że drugi szereg czasowy też wyszedł niestacjonarny musimy go zróżnicować.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -362,7 +330,7 @@ auto.arima(ts2, seasonal = TRUE)
 Model ts2arima okazał się najlepszy spośród testowany modeli.
 
 
-### Szereg 3
+### Model 3
 Jako, że trzeci szereg czasowy również wyszedł niestacjonarny musimy go zróżnicować.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -399,7 +367,7 @@ auto.arima(ts3, seasonal = TRUE)
 
 Model ts3arima okazał się najlepszy spośród testowany modeli.
 
-### Szereg 4
+### Model 4
 Jako, że czwarty szereg czasowy wyszedł niestacjonarny musimy go zróżnicować.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -423,12 +391,12 @@ Arima(y=ts4, order = c(8,2,8), lambda = NULL)
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-ts4arima = Arima(y=ts4, seasonal = c(4,2,4), lambda = NULL)
-ts4arima
+Arima(y=ts4, seasonal = c(4,2,4), lambda = NULL)
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-Arima(y=ts4, seasonal = c(4,0,4), lambda = "auto")
+ts4arima = Arima(y=ts4, seasonal = c(4,0,4), lambda = "auto")
+ts4arima
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -437,7 +405,7 @@ auto.arima(ts4, seasonal = TRUE)
 
 Model ts4arima okazał się najlepszy spośród testowany modeli.
 
-### Szereg 5
+### Model 5
 Jako, że piąty szereg czasowy też wyszedł niestacjonarny musimy go zróżnicować.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -462,16 +430,16 @@ Arima(y=ts5, seasonal = c(0,0,0), lambda = NULL)
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-Arima(y=ts5, order = c(1,1,0), lambda = "auto")
+Arima(y=ts5, order = c(1,2,1), lambda = "auto")
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-auto.arima(ts5, seasonal = TRUE)
+auto.arima(ts5, seasonal = FALSE)
 ```
 
 Model ts5arima okazał się najlepszy spośród testowany modeli.
 
-### Szereg 6
+### Model 6
 Jako, że szósty szereg czasowy wyszedł niestacjonarny musimy go zróżnicować.
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -488,7 +456,7 @@ Szereg czasowy wydaje się być sezonowy.
 
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-ts6arima = Arima(y=ts6, order = c(0,1,0), lambda = NULL)
+Arima(y=ts6, order = c(0,1,0), lambda = NULL)
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
@@ -496,80 +464,65 @@ Arima(y=ts6, seasonal = c(0,0,0), lambda = NULL)
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-#Arima(y=ts6, seasonal = c(1,0,1), lambda = "auto")
-# Za duża ilość dancyh do obliczenia dla komputera
+Arima(y=ts6, seasonal = c(0,0,0), lambda = "auto")
 ```
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-#auto.arima(ts6, seasonal = TRUE)
-# Za duża ilość dancyh do obliczenia dla komputera
+ts6arima = auto.arima(ts6, seasonal = TRUE)
+ts6arima
 ```
 
 Model ts6arima okazał się najlepszy spośród testowany modeli.
-
-### Szereg 7
-Jako, że siódmy jest stacjonarny nie musimy go różnicować.
-
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-acf(ts7)
-pacf(ts7)
-```
-
-Z testu ACF wychodzi nam, iż q może wychodzić 1. Z testu PACF wychodzi, iż p jest też równe 1.
-
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-Arima(y=ts7, seasonal = c(1,0,1), lambda = NULL)
-```
-
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-Arima(y=ts7, order = c(1,0,1), lambda = NULL)
-```
-
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-Arima(y=ts7, order = c(1,0,4), lambda = NULL)
-```
-
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-ts7arima = Arima(y=ts7, order = c(1,0,8), lambda = NULL)
-ts7arima
-```
-
-Model ts7arima okazał się najlepszy spośród testowany modeli.
 
 
 ## Predykcja
 Przeprowadzamy predykcję dla wybranych modeli.
 
+### Predykcja 1
+
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-prediction1 
+prediction1 = forecast(ts1arima, h = 12)
+autoplot(ts1, series="Original Data") +
+  autolayer(prediction1, series="Forecast", PI=TRUE) +
+  ggtitle("Time Series and ARIMA Forecast") +
+  xlab("Time") +
+  ylab("Value") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
 ```
+
+### Predykcja 2
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 prediction2 = forecast(ts2arima, h = 12)
 autoplot(ts2, series="Original Data") +
-  autolayer(prediction2, series="Forecast", PI=FALSE) +
+  autolayer(prediction2, series="Forecast", PI=TRUE) +
   ggtitle("Time Series and ARIMA Forecast") +
   xlab("Time") +
   ylab("Value") +
   theme_minimal() +
   scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
 ```
+
+### Predykcja 3
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 prediction3 = forecast(ts3arima, h = 12)
 autoplot(ts3, series="Original Data") +
-  autolayer(prediction3, series="Forecast", PI=FALSE) +
+  autolayer(prediction3, series="Forecast", PI=TRUE) +
   ggtitle("Time Series and ARIMA Forecast") +
   xlab("Time") +
   ylab("Value") +
   theme_minimal() +
   scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
 ```
+
+### Predykcja 4
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 prediction4 = forecast(ts4arima, h = 12)
 autoplot(ts4, series="Original Data") +
-  autolayer(prediction3, series="Forecast", PI=FALSE) +
+  autolayer(prediction4, series="Forecast", PI=TRUE) +
   ggtitle("Time Series and ARIMA Forecast") +
   xlab("Time") +
   ylab("Value") +
@@ -577,11 +530,12 @@ autoplot(ts4, series="Original Data") +
   scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
 ```
 
+### Predykcja 5
 
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
 prediction5 = forecast(ts5arima, h = 12)
 autoplot(ts5, series="Original Data") +
-  autolayer(prediction5, series="Forecast", PI=FALSE) +
+  autolayer(prediction5, series="Forecast", PI=TRUE) +
   ggtitle("Time Series and ARIMA Forecast") +
   xlab("Time") +
   ylab("Value") +
@@ -589,21 +543,12 @@ autoplot(ts5, series="Original Data") +
   scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
 ```
 
+### Predykcja 6
+
 ```{r echo=TRUE, message=TRUE, warning=FALSE}
-prediction6 = forecast(ts6arima, h = 12)
+prediction6 = forecast(ts6arima, h = 360)
 autoplot(ts6, series="Original Data") +
-  autolayer(prediction6, series="Forecast", PI=FALSE) +
-  ggtitle("Time Series and ARIMA Forecast") +
-  xlab("Time") +
-  ylab("Value") +
-  theme_minimal() +
-  scale_colour_manual(values=c("Original Data"="blue", "Forecast"="green"))
-```
-
-```{r echo=TRUE, message=TRUE, warning=FALSE}
-prediction7 = forecast(ts4arima, h = 12)
-autoplot(ts7, series="Original Data") +
-  autolayer(prediction7, series="Forecast", PI=FALSE) +
+  autolayer(prediction6, series="Forecast", PI=TRUE) +
   ggtitle("Time Series and ARIMA Forecast") +
   xlab("Time") +
   ylab("Value") +
@@ -614,53 +559,42 @@ autoplot(ts7, series="Original Data") +
 
 
 ## Dekompozycja
+Teraz przeprowadzamy dekompozycje dla naszych szeregów.
+
+### Dekompozycja 1
+```{r}
+decompose(ts1) %>% plot()
+```
+
+Z przeprowadzonej dekompozycji dla pierwszego szeregu czasowego wynika, że posiadamy zauważalny trend, zachodzi tutaj sezonowość oraz występują pojedyńcze odchylenia losowe.
+
+### Dekompozycja 2
 
 ```{r}
 decompose(ts2) %>% plot()
 ```
 
+Z przeprowadzonej dekompozycji dla drugiego szeregu czasowego wynika, że nie posiadamy zauważalnego tredu, zachodzi tutaj sezonowość oraz występują pojedyńcze odchylenia losowe.
+
+### Dekompozycja 3
 
 ```{r}
 decompose(ts3) %>% plot()
 ```
 
+Z przeprowadzonej dekompozycji dla trzeciego szeregu czasowego wynika, że  posiadamy zauważalny tred, zachodzi tutaj sezonowość oraz występują pojedyńcze odchylenia losowe oscylujące wokół zera.
+
+### Dekompozycja 4
+
 ```{r}
 decompose(ts4) %>% plot()
 ```
 
-```{r}
-decompose(ts5) %>% plot()
-```
+Z przeprowadzonej dekompozycji dla czwartego szeregu czasowego wynika, że posiadamy zauważalny tred, zachodzi tutaj sezonowość oraz występują odchylenia losowe.
 
-```{r}
-decompose(ts6) %>% plot()
-```
+### Dekompozycja 5 i 6
 
-```{r}
-decompose(ts7) %>% plot()
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Dla szeregu 5 i 6 nie możemy przeprowadzić dekompozycji, gdyż w pierszym przypadku mamy niepełny okres a w drugim jeden okres.
 
 
 
